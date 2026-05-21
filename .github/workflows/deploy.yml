@@ -27,10 +27,13 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install --prefer-offline
+        run: npm install --loglevel verbose
 
       - name: Build
         run: npm run build
+
+      - name: Show dist
+        run: ls -la dist/ && cat dist/index.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
