@@ -1,76 +1,81 @@
-# 宇宙飞船星际穿越动画 - SPEC
+# anime-starship v2 — 3D Third-Person Ship Viewer
 
 ## Concept & Vision
 
-一个沉浸式的星际穿越动画体验：一艘发光飞船在星海中疾驰，星空在周围快速流动，产生超空间跳跃的视觉冲击感。风格参考 anime.js 官网——暗色调 + 霓虹光晕 + 流体运动，干净优雅但有力量感。
+A fully immersive 3D space flight experience from a **third-person over-the-shoulder perspective**. The camera sits just behind and above the spaceship, looking forward — like looking over a pilot's shoulder out the cockpit window. Stars rush toward the viewer creating a visceral sense of speed. The ship feels weighty and alive: engines pulse, exhaust trails linger, and entering warp tears reality apart with stretched light streaks.
+
+This is not a game — it's a **living wallpaper**, a meditative flight simulator you set and watch.
+
+---
 
 ## Design Language
 
-- **Aesthetic**: 深空暗色系 + 霓虹蓝紫光晕，参考 anime.js 官网暗色主题
-- **Colors**:
-  - 背景: `#030014` (近黑深紫)
-  - 星星白: `#ffffff`, `#a5c8ff`
-  - 飞船主体: `#0a0a1a` (深蓝黑)
-  - 引擎光晕: `#00d4ff` (青蓝霓虹)
-  - 辅助光: `#7c3aed` (紫色)
-  - 热光: `#f59e0b` (琥珀色)
-- **Typography**: Space Grotesk (Google Fonts) — 科技感
-- **Motion**: 大量 RAF + anime.js，流动感强，easing 偏 elastic/expo
-- **Visual Assets**: 纯 SVG + CSS，无外部图片依赖
+### Aesthetic
+Dark anime space opera — deep blacks, electric cyan engine glow, purple nebula haze. Reference: Ghost in the Shell cockpit views, Evangelion entry plug sequences.
 
-## Layout & Structure
+### Color Palette
+| Role        | Hex       | Usage                          |
+|-------------|-----------|--------------------------------|
+| Background  | `#030014` | Deep space void                |
+| Primary     | `#00d4ff` | Engine glow, UI accents        |
+| Secondary   | `#7c3aed` | Nebula, exhaust trail          |
+| Accent      | `#f59e0b` | Warp state, heat               |
+| Ship body   | `#0a0a1a` | Hull base                      |
 
-- 全屏 canvas：星空 + 飞船
-- 底部标题区 + 状态文字
-- 顶层：控制面板（暂停/播放，speed 调节）
+### Motion Philosophy
+- **Engine idle**: Subtle pulse on engine cores, 2-3s loop
+- **Speed buildup**: Stars accelerate gradually, engine glow intensifies
+- **Warp transition**: Stars stretch into radial streaks from screen center outward, engine exhaust elongates
+- **Burst**: Screen flash + ship scale pop (camera shake feel)
 
-## Features & Interactions
+---
 
-### 核心动画序列
-1. **星空背景** — 多层星星以不同速度向后流动（近/中/远景）
-2. **飞船入场** — 从下方渐入，发光引擎逐步点亮
-3. **超空间跳跃** — 星星变成光线拉伸（streak lines），飞船轻微震动 + 引擎全开
-4. **星云漂移** — 背景有半透明彩色星云缓慢漂移
-5. **引擎尾焰** — 动态拖尾 + 粒子感
+## 3D Architecture
 
-### 交互
-- 空格键：暂停/继续
-- 点击飞船：触发 burst 效果（短暂加速）
-- Speed 滑杆：0.5x - 3x
+### Scene Setup
+- **Camera**: PerspectiveCamera (FOV 75), positioned at (0, 2, 8) relative to ship — behind and above, looking forward. Soft follow (lerp factor 0.05).
+- **Lighting**: Dim ambient (0x111122) + point light at engine positions (cyan, intensity 2) + subtle directional light from front
+- **Background**: Black (#030014) via scene.background
+- **Fog**: Exponential fog matching background color
 
-### States
-- Loading: 引擎点火动画（从小光点展开）
-- Idle: 轻微悬浮动画 (hover)
-- Warp: 全速飞行（星星变 streak）
-- Arriving: 减速，引擎光收缩
+### Coordinate System
+- Ship moves along **-Z axis** (forward)
+- Camera sits at ship.position + (0, 2, 8)
+- Stars spawn ahead (z: -500 to -1000), move toward camera (+Z)
 
-## Component Inventory
+### 3D Assets (Primitives Only)
 
-### Starship (SVG)
-- 主体：流线型梭形，深蓝黑
-- 座舱：透明蓝玻璃质感
-- 引擎：3 个圆形推进器，带发光
-- 光晕层：多层 blur filter，外层大范围 glow
+**Spaceship**:
+- Hull: BoxGeometry composed
+- Wings: BoxGeometry angled back
+- Engine pods: CylinderGeometry × 3
+- Cockpit: SphereGeometry half, transparent
+- Engine glow: PointLight
 
-### Stars
-- 3 层：远景(小/慢/暗)、中景(中速)、近景(大/快/亮白)
-- 近景星星在 warp 模式变 streak
+**Starfield**: 3 layers, ~200 stars, PointsMaterial
 
-### Nebula
-- 2-3 个半透明渐变圆，缓慢漂移
-- 颜色：紫/蓝/粉
+**Warp Streaks**: Stars morph to elongated scaleZ when warp active
 
-### UI
-- 标题：`INTERSTELLAR TRANSIT` + 副标题
-- 状态文字：`WARP DRIVE ENGAGED` / `COASTING`
-- 控制栏：播放/暂停按钮 + 速度滑块
+---
 
-## Technical Approach
+## States
 
-- 单文件 `index.html`（CSS + JS 内联）
-- anime.js via CDN (esm.sh)
-- SVG 内联（便于 anime.js 操作 transform）
-- 全屏相对定位，所有元素绝对定位堆叠
-- anime.js Timeline 编排主序列
-- 星星用 JS 动态生成 DOM + anime.js 管理
-- Vite 打包（可选），或纯静态
+- `IDLE`: speed ≤ 1.0, stars normal
+- `CRUISING`: speed 1.0–1.5, stars slightly elongated
+- `WARP`: speed > 1.5 or burst, stars stretched, FOV expands 75→90
+
+---
+
+## Controls
+
+- **Click anywhere** → burst (2s warp)
+- **Automatic speed**: 0.5 → 1.5 → 0.5, 20s cycle
+- **Auto warp**: every 15s for 5s (demo mode)
+
+---
+
+## Technical Stack
+
+- Vite + Vanilla JS + Three.js (npm)
+- No framework, no external 3D models
+- GitHub Pages deployment (static)
